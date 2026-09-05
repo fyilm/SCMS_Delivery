@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 综合报告（阶段5，本地生成，不入库）
+report/
+
+# 中间大文件与缓存
+*.tmp
+.ipynb_checkpoints/
+
+# 操作系统
+.DS_Store
+Thumbs.db
