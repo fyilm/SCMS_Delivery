@@ -600,6 +600,23 @@ wheels = [
 ]
 
 [[package]]
+name = "scikit-posthocs"
+version = "0.16.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "matplotlib" },
+    { name = "numpy" },
+    { name = "pandas" },
+    { name = "scipy" },
+    { name = "seaborn" },
+    { name = "statsmodels" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/64/6f/8ccf45c032f55ddb80a96227e20b3b6c7a55292433dae19cafb4404cc8a4/scikit_posthocs-0.16.1.tar.gz", hash = "sha256:b48fc86a7fe5cf5c68c185e166c8a272b5a3fc50abf44ef45a5d66a83af3f00f", size = 49614, upload-time = "2026-08-29T11:10:56.804Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/14/e7/985f214c186a1839294150cbb15312e060d61a8b8f002d9367352f0dfb52/scikit_posthocs-0.16.1-py3-none-any.whl", hash = "sha256:fedd4ee9784812f197c606a002774f226edd42cad8d49097a5a0f6024ef4cba4", size = 45888, upload-time = "2026-08-29T11:10:55.448Z" },
+]
+
+[[package]]
 name = "scipy"
 version = "1.18.1"
 source = { registry = "https://pypi.org/simple" }
@@ -678,6 +695,7 @@ dependencies = [
     { name = "matplotlib" },
     { name = "openpyxl" },
     { name = "pandas" },
+    { name = "scikit-posthocs" },
     { name = "scipy" },
     { name = "seaborn" },
     { name = "statsmodels" },
@@ -688,6 +706,7 @@ requires-dist = [
     { name = "matplotlib", specifier = ">=3.11.1" },
     { name = "openpyxl", specifier = ">=3.1.5" },
     { name = "pandas", specifier = ">=3.0.5" },
+    { name = "scikit-posthocs", specifier = ">=0.16.1" },
     { name = "scipy", specifier = ">=1.18.1" },
     { name = "seaborn", specifier = ">=0.13.2" },
     { name = "statsmodels", specifier = ">=0.15.0" },

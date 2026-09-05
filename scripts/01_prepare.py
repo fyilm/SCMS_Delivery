@@ -24,7 +24,7 @@ RAW_COLS = [
     "Line Item Insurance (USD)",
 ]
 
-df = pd.read_csv(RAW, encoding="utf-8-sig", dtype=str)
+df = pd.read_csv(RAW, encoding="utf-8-sig", dtype=str, keep_default_na=False, na_values=[""])
 n_raw = len(df)
 
 # 决策表条目收集器
