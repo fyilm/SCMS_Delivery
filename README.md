@@ -24,7 +24,7 @@ SCMS_Delivery/
 │   ├── 04_supplier.py     # 阶段4：供应商评分卡 + ABC 分级
 │   └── 05_report.py       # 阶段5：透视表复现核心结论
 ├── output/                # 清洗数据 + 图表 + 评分卡 + 分阶段结论
-├── report/                # 综合报告（本地生成，不入库）
+├── report/                # 综合报告 / Top5 洞察 / 透视表
 ├── pyproject.toml / uv.lock
 └── .gitignore
 ```
@@ -60,7 +60,7 @@ uv run python scripts/05_report.py    # 生成 report/透视表.xlsx
 - 运费回归 R²=0.675：由重量规模效应（log_weight 系数 -0.45）与运输方式主导，Air 单位运费约为 Ocean 的 6 倍。
 - 供应商高度集中：`SCMS from RDC` 占交付金额 66.7%；Aurobindo 为「大体量 + 低准时」首要整改对象。
 
-> 更多细节见 `report/`（综合报告 / Top5 Insights / 面试拷问清单），该目录按约定不入库，本地运行阶段 1–5 后生成。
+> 更多细节见 `report/`（综合报告 / Top5 Insights / 透视表）。
 
 ## 说明
 
