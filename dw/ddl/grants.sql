@@ -15,9 +15,11 @@ GRANT SELECT, INSERT, UPDATE ON `ops`.* TO 'scms_etl'@'localhost';
 GRANT SELECT ON `meta`.* TO 'scms_etl'@'localhost';
 
 -- 2) BI 只读账号（Power BI 直连）
+-- 注：Power BI 的 MySQL 连接器非 SSL 握手不支持 caching_sha2_password，故用 mysql_native_password
 DROP USER IF EXISTS 'scms_bi'@'localhost';
-CREATE USER 'scms_bi'@'localhost' IDENTIFIED BY '{{BI_PWD}}';
+CREATE USER 'scms_bi'@'localhost' IDENTIFIED WITH mysql_native_password BY '{{BI_PWD}}';
 GRANT SELECT ON `ads`.* TO 'scms_bi'@'localhost';
+GRANT SELECT ON `dws`.* TO 'scms_bi'@'localhost';
 GRANT SELECT ON `dim`.* TO 'scms_bi'@'localhost';
 
 -- 3) API 只读账号（FastAPI 查询服务）
