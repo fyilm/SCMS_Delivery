@@ -2,6 +2,14 @@
 
 > 所有 Power BI 度量均指向 MySQL 语义视图（`ads.v_*` / `dws.v_*`），口径与 `docs/口径文档.md` 逐条对齐，禁止在 Power BI 内另算口径。
 
+## 聚合原则（重要）
+
+视图里每行已是「一个供应商 / 一个维度分组」的最终结果，Power BI 侧**只取数、不重算**：
+
+- **百分比 / 比率 / 中位数 / 平均迟到 / 评分** → 字段聚合用「不汇总(Don't summarize)」或 `MAX`，**禁止 `SUM`**（否则会把不同分组的值相加，如 OTD% 会 >100%）。
+- **金额 / 计数** → 才用 `SUM`（这类才是可加总的）。
+- 数值列拖进图表后 Power BI 默认「求和(Sum)」，务必手动改成「不汇总」或 `MAX`。
+
 ## 看板一：供应商监控（数据源 `ads.v_supplier_scorecard` / `ads.v_abc_summary`）
 
 | 度量名 | DAX | SQL 来源 | 口径文档条款 |
@@ -17,10 +25,10 @@
 
 | 度量名 | DAX | SQL 来源 | 口径文档条款 |
 |---|---|---|---|
-| 运输方式准时率 | `SUM(v_otd_by_mode[otd_pct])`（按 shipment_mode 分组展示） | `dws.otd_by_mode` | §1 准时率 |
-| 国家准时率 | `SUM(v_otd_by_country[otd_pct])` | `dws.otd_by_country` | §1 |
-| 周期中位天数 | `SUM(v_cycle_summary[median_days])`（按 cycle_seg） | `dws.cycle_summary` | §1 cycle 三段+总周期 |
-| 单位运费中位 | `SUM(v_unit_freight_by_mode[median_freight])` | `dws.unit_freight_by_mode` | §1 unit_freight 分母保护 |
-| 月度准时率趋势 | `SUM(v_monthly_summary[otd_pct])` | `dws.monthly_summary` | §1 |
+| 运输方式准时率 | `MAX(v_otd_by_mode[otd_pct])`（按 shipment_mode 分组） | `dws.otd_by_mode` | §1 准时率 |
+| 国家准时率 | `MAX(v_otd_by_country[otd_pct])` | `dws.otd_by_country` | §1 |
+| 周期中位天数 | `MAX(v_cycle_summary[median_days])`（按 cycle_seg） | `dws.cycle_summary` | §1 cycle 三段+总周期 |
+| 单位运费中位 | `MAX(v_unit_freight_by_mode[median_freight])` | `dws.unit_freight_by_mode` | §1 unit_freight 分母保护 |
+| 月度准时率趋势 | `MAX(v_monthly_summary[otd_pct])` | `dws.monthly_summary` | §1 |
 
 > 说明：视图已按口径物化，Power BI 侧仅做「取数 + 展示 + 切片」，不做二次指标计算，保证与对账结论一致（`output/对账报告.md`）。
