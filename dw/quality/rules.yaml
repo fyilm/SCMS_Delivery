@@ -1,0 +1,164 @@
+# 数据质量校验规则注册表（四维：完整性/有效性/一致性/及时性；级别 fatal/warning）
+# 字段说明：id 规则ID；dimension 维度；level 级别；layer 作用分层；
+#           query 返回单值标量的 SQL；op 比较符(eq/ne/gt/lt/ge/le)；expected 期望值
+- id: C1
+  dimension: 完整性
+  level: fatal
+  layer: dwd
+  name: DWD 事实表非空
+  query: "SELECT COUNT(*) FROM dwd.fact_shipment"
+  op: gt
+  expected: 0
+
+- id: C2
+  dimension: 完整性
+  level: warning
+  layer: dwd
+  name: DWD 行数与基准一致
+  query: "SELECT COUNT(*) FROM dwd.fact_shipment"
+  op: eq
+  expected: 10324
+
+- id: C3
+  dimension: 一致性
+  level: fatal
+  layer: dwd
+  name: ODS 与 DWD 行数一致
+  query: "SELECT (SELECT COUNT(*) FROM ods.raw_shipment) = (SELECT COUNT(*) FROM dwd.fact_shipment)"
+  op: eq
+  expected: 1
+
+- id: C4
+  dimension: 完整性
+  level: fatal
+  layer: dwd
+  name: 实际交货日无缺失
+  query: "SELECT COUNT(*) FROM dwd.fact_shipment WHERE delivered_date IS NULL"
+  op: eq
+  expected: 0
+
+- id: C5
+  dimension: 完整性
+  level: fatal
+  layer: dwd
+  name: 计划交货日无缺失
+  query: "SELECT COUNT(*) FROM dwd.fact_shipment WHERE scheduled_date IS NULL"
+  op: eq
+  expected: 0
+
+- id: C6
+  dimension: 完整性
+  level: warning
+  layer: dwd
+  name: 数量列无缺失
+  query: "SELECT COUNT(*) FROM dwd.fact_shipment WHERE qty IS NULL"
+  op: eq
+  expected: 0
+
+- id: V1
+  dimension: 有效性
+  level: fatal
+  layer: dwd
+  name: 运费状态枚举合法
+  query: "SELECT COUNT(*) FROM dwd.fact_shipment WHERE freight_flag NOT IN ('numeric','included','invoiced','reference')"
+  op: eq
+  expected: 0
+
+- id: V2
+  dimension: 有效性
+  level: fatal
+  layer: dwd
+  name: PQ 日期状态枚举合法
+  query: "SELECT COUNT(*) FROM dwd.fact_shipment WHERE pq_flag NOT IN ('date','pre_pq','not_captured')"
+  op: eq
+  expected: 0
+
+- id: V3
+  dimension: 有效性
+  level: fatal
+  layer: dwd
+  name: PO 日期状态枚举合法
+  query: "SELECT COUNT(*) FROM dwd.fact_shipment WHERE po_flag NOT IN ('date','from_rdc','not_captured')"
+  op: eq
+  expected: 0
+
+- id: V4
+  dimension: 有效性
+  level: fatal
+  layer: dwd
+  name: 运输方式无缺失
+  query: "SELECT COUNT(*) FROM dwd.fact_shipment WHERE shipment_mode IS NULL OR shipment_mode = ''"
+  op: eq
+  expected: 0
+
+- id: V5
+  dimension: 有效性
+  level: warning
+  layer: dwd
+  name: 交付年份在合理区间(2000-2025)
+  query: "SELECT COUNT(*) FROM dwd.fact_shipment WHERE delivery_year IS NOT NULL AND (delivery_year < 2000 OR delivery_year > 2025)"
+  op: eq
+  expected: 0
+
+- id: V6
+  dimension: 有效性
+  level: fatal
+  layer: dwd
+  name: 主键唯一
+  query: "SELECT COUNT(*) = COUNT(DISTINCT id) FROM dwd.fact_shipment"
+  op: eq
+  expected: 1
+
+- id: S1
+  dimension: 一致性
+  level: fatal
+  layer: dwd
+  name: 延迟天数与日期差一致
+  query: "SELECT COUNT(*) FROM dwd.fact_shipment WHERE delay_days IS NOT NULL AND delay_days <> DATEDIFF(delivered_date, scheduled_date)"
+  op: eq
+  expected: 0
+
+- id: S2
+  dimension: 一致性
+  level: fatal
+  layer: dwd
+  name: 准时标志与延迟判定一致
+  query: "SELECT COUNT(*) FROM dwd.fact_shipment WHERE delay_days IS NOT NULL AND ot_bool <> (delay_days <= 0)"
+  op: eq
+  expected: 0
+
+- id: S3
+  dimension: 一致性
+  level: warning
+  layer: dwd
+  name: 总周期等于三段之和
+  query: "SELECT COUNT(*) FROM dwd.fact_shipment WHERE c1_pq2po IS NOT NULL AND c2_po2sched IS NOT NULL AND c3_sched2deliv IS NOT NULL AND c_total IS NOT NULL AND c_total <> (c1_pq2po + c2_po2sched + c3_sched2deliv)"
+  op: eq
+  expected: 0
+
+- id: S4
+  dimension: 一致性
+  level: warning
+  layer: dim
+  name: 维度表供应商与明细一致(无孤儿)
+  query: "SELECT COUNT(*) FROM dim.dim_vendor d WHERE NOT EXISTS (SELECT 1 FROM dwd.fact_shipment f WHERE f.vendor = d.vendor)"
+  op: eq
+  expected: 0
+
+- id: T1
+  dimension: 及时性
+  level: warning
+  layer: dwd
+  name: 录入日期不早于实际交货日
+  query: "SELECT COUNT(*) FROM dwd.fact_shipment WHERE recorded_date IS NOT NULL AND delivered_date IS NOT NULL AND recorded_date < delivered_date"
+  op: eq
+  expected: 0
+
+- id: T2
+  dimension: 及时性
+  level: fatal
+  layer: dwd
+  name: 录入日期无缺失
+  query: "SELECT COUNT(*) FROM dwd.fact_shipment WHERE recorded_date IS NULL"
+  op: eq
+  expected: 0

@@ -1,67 +1,91 @@
-# SCMS Delivery — 交付供应链绩效分析
+# SCMS Delivery — 交付供应链绩效分析（数仓工程版）
 
-对 SCMS（Supply Chain Management System，PEPFAR 下）向非洲及受援国配送 HIV 抗病毒药 / 检测试剂的历史交付数据，做从**数据准备 → 时效分析 → 成本分析 → 供应商绩效 → 综合报告**的全链路分析。
+对 SCMS（PEPFAR 下）向非洲及受援国配送 HIV 抗病毒药 / 检测试剂的历史交付数据（10,324 行，2006–2015，43 国 73 供应商），做 **MySQL 五层数仓 + 数据质量 + SQL 分析 + BI + API 服务** 的全链路工程化分析。
 
-## 数据
+## 架构
 
-- 文件：`data/SCMS_Delivery_History_data.csv`
-- 规模：10,324 条单品交货记录（2006–2015，43 国，73 供应商）
-- 字段：订单/询价编号、国家、配送渠道、贸易条款、运输方式、5 个日期、产品属性、数量/金额/单价、重量、运费、保险费（共 33 列）
-
-## 项目结构
-
-```
-SCMS_Delivery/
-├── data/                  # 原始数据（只读）
-├── docs/
-│   ├── 口径文档.md         # 指标口径 v1.1（所有计算的强制规范）
-│   └── 清洗决策表.md       # 字段→问题→处理→影响行数
-├── scripts/               # 可复现脚本（uv run 执行）
-│   ├── common.py          # 清洗后数据集标准加载器
-│   ├── 01_prepare.py      # 阶段1：清洗 + 特征工程
-│   ├── 02_timeliness.py   # 阶段2：交付时效 + 统计检验
-│   ├── 03_cost.py         # 阶段3：成本结构 + 运费回归
-│   ├── 04_supplier.py     # 阶段4：供应商评分卡 + ABC 分级
-│   └── 05_report.py       # 阶段5：透视表复现核心结论
-├── output/                # 清洗数据 + 图表 + 评分卡 + 分阶段结论
-├── report/                # 综合报告 / Top5 洞察 / 透视表
-├── pyproject.toml / uv.lock
-└── .gitignore
+```mermaid
+flowchart LR
+    CSV[源 CSV] -->|Python ETL 幂等全量| ODS[ODS 贴源层<br/>ods.raw_shipment]
+    ODS -->|清洗/解析/特征| DWD[DWD 明细层<br/>dwd.fact_shipment]
+    DWD --> DIM[DIM 维度层<br/>dim.*]
+    DWD -->|SQL CTE+窗口| DWS[DWS 汇总层<br/>dws.otd_by_mode/cycle/...]
+    DWS -->|SQL min-max/Pareto| ADS[ADS 应用层<br/>ads.supplier_scorecard/...]
+    ADS --> BI[Power BI 只读 scms_bi]
+    ADS --> API[FastAPI 只读 scms_api]
+    ADS --> ST[Streamlit 前端]
+    DQ[质量校验四维] -.写.- OPS[ops 告警/日志]
+    META[meta 元数据] -.字典/规则.- OPS
 ```
 
-## 环境与复现
+- **五层数仓**：ODS → DWD → DIM → DWS → ADS，另加 `meta`（元数据）/`ops`（运行告警）两个治理 schema，共 7 schema。
+- **最小权限账号**：`scms_etl`（管道，DML）、`scms_bi`（BI 只读）、`scms_api`（API 只读）；DDL 仅 root。
+- **口径一致**：SQL 物化与 pandas 研究层用 `reconcile.py` 对账（20 项全 PASS，见 `output/对账报告.md`）。
 
-依赖由 [uv](https://docs.astral.sh/uv/) 管理（锁文件 `uv.lock` 固定版本，Python ≥ 3.12）。
+## 目录
+
+```
+dw/        # 数仓：ddl(schema/grants/init/导出字典)、etl、quality、analytics(SQL+对账)
+api/       # FastAPI 服务 + pytest + Streamlit 前端
+bi/        # Power BI 接入指南 + 度量口径对照表
+deploy/    # 一键编排 run_pipeline.py + 定时任务 + .env.example
+scripts/   # 研究分析层（统计检验/回归/绘图，pandas 黄金口径来源）
+docs/      # 口径文档 v2.0 / 数据仓库设计 / 数据字典 / 清洗决策表
+output/    # 巡检报告 / 对账报告 / 清洗数据 / 图表
+config/    # .env（数据库凭据，不入库）
+```
+
+## 快速启动
+
+### 1. 初始化数据库（建 7 schema + 账号 + 元数据）
 
 ```bash
-uv sync                       # 安装依赖
-uv run python scripts/01_prepare.py   # 阶段1：清洗 + 决策表 + 数据概况
-uv run python scripts/02_timeliness.py
-uv run python scripts/03_cost.py
-uv run python scripts/04_supplier.py
-uv run python scripts/05_report.py    # 生成 report/透视表.xlsx
+uv sync                                   # 安装依赖（uv.lock 锁版本）
+uv run python dw/ddl/init_db.py <root密码>  # 重建 schema、生成专用账号密码写入 config/.env
 ```
 
-依赖：pandas、matplotlib、seaborn、scipy、statsmodels、scikit-posthocs、openpyxl。
+### 2. 跑数据管道（ETL → SQL 物化 → 质量 → 对账）
 
-## 方法论要点
+```bash
+uv run python deploy/run_pipeline.py
+```
 
-- **口径先行**：所有指标先定义后计算（`docs/口径文档.md`），任何口径未覆盖情况先停先问。
-- **缺失/特殊值只标记不静默删除**：`N/A`、`Pre-PQ Process`、`N/A - From RDC` 等业务状态保留为独立类别并单独计数。
-- **统计规范**：组间比较用 Kruskal-Wallis + Dunn 两两（BH-FDR 校正）；每结论附方法 + 统计量 + p 值 + 样本量；不显著不写「显著」。
-- **回归口径**：因变量 `log1p(unit_freight)`，剔除文本标记行，one-hot + 参照组，连续变量 winsorize ±1%；结论只作关联、不作因果。
-- **供应商评分**：门槛 ≥10 行；指标 OTD / 平均迟到 / 金额 / 频次 min-max 归一化，权重 40/30/20/10；ABC 分级按金额帕累托。
+等价分步：`dw/etl/ingest.py` → `dw/analytics/refresh_ads.py` → `dw/quality/run.py` → `dw/analytics/reconcile.py`
 
-## 核心结论
+### 3. 启动查询服务
 
-- 准时交付率 **OTD 88.51%**，但长尾严重（迟到中位 12 天、p99 164 天）。
-- 延迟显著因子：运输方式（Ocean 82.5% vs Air 90.4%）与 RDC 链路（82.8%）；国家差异大（Vietnam 99.1% vs Congo DRC 75.1%）。
-- 采购周期瓶颈在「下单→计划」段（中位 92 天，占全程约 60%）。
-- 运费回归 R²=0.675：由重量规模效应（log_weight 系数 -0.45）与运输方式主导，Air 单位运费约为 Ocean 的 6 倍。
-- 供应商高度集中：`SCMS from RDC` 占交付金额 66.7%；Aurobindo 为「大体量 + 低准时」首要整改对象。
+```bash
+uv run uvicorn api.main:app --host 127.0.0.1 --port 8000   # FastAPI
+uv run streamlit run api/dashboard.py                       # 前端（另开终端）
+uv run pytest -q                                            # 接口测试
+```
 
-> 更多细节见 `report/`（综合报告 / Top5 Insights / 透视表）。
+### 4. 定时任务（可选）
+
+```powershell
+.\deploy\register_task.ps1   # 注册 Windows 任务计划，每日自动跑管道
+```
+
+## 关键结论
+
+- 准时交付率 **OTD 88.51%**，迟到中位 12 天、P99 164 天（长尾严重）。
+- 采购周期瓶颈在「下单 → 计划」段（中位 92 天，占全程约 60%）；Ocean/卡车与中部非洲延迟最重。
+- 运费回归 R²≈0.68：重量规模效应显著（log_weight 系数 -0.45）、空运单位运费约为海运 6 倍。
+- 供应商高度集中（`SCMS from RDC` 占金额 66.7%），Aurobindo 为「大体量 + 低准时」首要整改对象。
+
+> 详见 `report/`（综合报告 / Top5 Insights / 透视表）。
+
+## 故障排查
+
+| 现象 | 处理 |
+|---|---|
+| `init_db` 连不上 MySQL | 检查服务 `MySQL80` 是否 Running；确认 root 密码 |
+| 管道某阶段失败 | 看 `ops.run_log` 表，或直接跑该阶段脚本看报错 |
+| 对账失败 | 先跑 `scripts/01_prepare.py` 重新生成研究层基准，再重跑 `reconcile.py` |
+| API 读不到 dws | `scms_api` 仅授权 `ads`/`dim`，dws 结果请走 `ads.v_*` 视图 |
+| Power BI 连不上 | 确认用 `scms_bi` 账号；MySQL 需装 Connector/ODBC（见 `bi/README.md`） |
+| 中文乱码（控制台） | 数据/文件均为 UTF-8，控制台 GBK 显示乱码不影响产物 |
 
 ## 说明
 
-本仓库仅用于数据分析练习与学习，结论为基于历史数据的描述性与关联性分析，不构成对 SCMS 或任何组织的业务评价。
+本仓库仅用于数据分析与工程实践练习；结论为基于历史数据的描述性/关联性分析，不构成对 SCMS 或任何组织的业务评价。
