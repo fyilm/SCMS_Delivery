@@ -12,7 +12,9 @@
 ## 1. 连接 MySQL
 
 1. Power BI Desktop → 获取数据 → **MySQL 数据库**。
-2. 服务器 `127.0.0.1:3306`，数据库选 `scms_dw` 语义视图，账号 `scms_bi`（只读）。
+2. 服务器 `127.0.0.1:3306`，账号 `scms_bi`（只读）。数据库字段必填，但数据分散在 7 个库（`ods`/`dwd`/`dim`/`dws`/`ads`/`meta`/`ops`），一次只能连一个库：
+   - 第 1 次连接填 `ads`（评分卡/ABC/OTD 汇总/质量汇总）；
+   - 第 2 次连接填 `dws`（按方式/国家的 OTD、周期、单位运费、月度趋势）。
 3. 选择需要的表/视图：
    - `ads.v_supplier_scorecard`、`ads.v_abc_summary`
    - `dws.v_otd_by_mode`、`dws.v_otd_by_country`、`dws.v_cycle_summary`、`dws.v_unit_freight_by_mode`、`dws.v_monthly_summary`
