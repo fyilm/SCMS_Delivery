@@ -26,6 +26,7 @@ GRANT SELECT ON `dim`.* TO 'scms_bi'@'localhost';
 DROP USER IF EXISTS 'scms_api'@'localhost';
 CREATE USER 'scms_api'@'localhost' IDENTIFIED BY '{{API_PWD}}';
 GRANT SELECT ON `ads`.* TO 'scms_api'@'localhost';
+GRANT SELECT ON `dws`.* TO 'scms_api'@'localhost';
 GRANT SELECT ON `dim`.* TO 'scms_api'@'localhost';
 
 FLUSH PRIVILEGES;

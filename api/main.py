@@ -48,3 +48,38 @@ def supplier_score(name: str = Path(..., min_length=1, max_length=128)):
     if row is None:
         raise HTTPException(status_code=404, detail=f"未找到供应商：{name}")
     return row
+
+
+@app.get("/api/v1/summary/kpi")
+def summary_kpi():
+    return repo.kpis()
+
+
+@app.get("/api/v1/summary/abc")
+def summary_abc():
+    return repo.abc_summary()
+
+
+@app.get("/api/v1/summary/otd-by-mode")
+def summary_otd_by_mode():
+    return repo.otd_by_mode()
+
+
+@app.get("/api/v1/summary/otd-by-country")
+def summary_otd_by_country():
+    return repo.otd_by_country()
+
+
+@app.get("/api/v1/summary/cycle")
+def summary_cycle():
+    return repo.cycle_summary()
+
+
+@app.get("/api/v1/summary/freight-by-mode")
+def summary_freight_by_mode():
+    return repo.freight_by_mode()
+
+
+@app.get("/api/v1/summary/monthly")
+def summary_monthly():
+    return repo.monthly_summary()
